@@ -1,0 +1,105 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: skrouterd
+  name: skrouterd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: skrouterd
+  template:
+    metadata:
+      labels:
+        app: skrouterd
+    spec:
+      containers:
+      - image: quay.io/skupper/skupper-router:main
+        imagePullPolicy: IfNotPresent
+        name: skrouterd
+        ports:
+        - containerPort: 5672
+          name: amqp
+          protocol: TCP
+        env:
+        - name: QDROUTERD_CONF_TYPE
+          value: json
+        - name: QDROUTERD_CONF
+          value: |
+            [
+                [
+                    "router",
+                    {
+                        "id": "canary-test-2",
+                        "mode": "interior"
+                    }
+                ],
+                [
+                    "listener",
+                    {
+                        "name": "amqp",
+                        "host": "0.0.0.0",
+                        "port": "5672"
+                    }
+                ],
+                [
+                    "listener",
+                    {
+                        "name": "inter-router",
+                        "host": "0.0.0.0",
+                        "role": "inter-router",
+                        "port": "55672"
+                    }
+                ],
+                [
+                    "listener",
+                    {
+                        "name": "edge-router",
+                        "host": "0.0.0.0",
+                        "role": "edge",
+                        "port": "45672"
+                    }
+                ],
+                [
+                    "connector",
+                    {
+                        "name": "site-a-link",
+                        "host": "skrouterd.site-a.svc.cluster.local",
+                        "role": "inter-router",
+                        "port": "55672"
+                    }
+                ],
+                [
+                    "tcpConnector",
+                    {
+                        "name": "skupper-nginx-3-1@8080",
+                        "host": "nginx-3",
+                        "port": "8080",
+                        "address": "nginx-3:8080"
+                    }
+                ]
+
+            ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: skrouterd
+  name: skrouterd
+spec:
+  ports:
+  - port: 55672
+    protocol: TCP
+    targetPort: 55672
+    name: "55672"
+  - port: 45672
+    protocol: TCP
+    targetPort: 45672
+    name: "45672"
+  selector:
+    app: skrouterd
+  type: LoadBalancer 
+

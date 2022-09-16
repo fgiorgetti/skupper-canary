@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: skrouterd-nginx
+  name: skrouterd-nginx-1-3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: skrouterd-nginx
+  template:
+    metadata:
+      labels:
+        app: skrouterd-nginx
+    spec:
+      containers:
+      - image: quay.io/skupper/skupper-router:main
+        imagePullPolicy: IfNotPresent
+        name: skrouterd
+        ports:
+        - containerPort: 8080
+          name: "http-8080"
+          protocol: TCP
+        env:
+        - name: QDROUTERD_CONF_TYPE
+          value: json
+        - name: QDROUTERD_CONF
+          value: |
+            [
+                [
+                    "router",
+                    {
+                        "id": "can-2-nginx-1-3",
+                        "mode": "interior"
+                    }
+                ],
+                [
+                    "connector",
+                    {
+                        "name": "skrouterd",
+                        "host": "skrouterd",
+                        "role": "inter-router",
+                        "port": "55672"
+                    }
+                ],
+                [
+                    "tcpListener",
+                    {
+                        "name": "nginx@8080",
+                        "host": "0.0.0.0",
+                        "port": "8080",
+                        "address": "nginx-1:8080"
+                    }
+               ]
+            ]
